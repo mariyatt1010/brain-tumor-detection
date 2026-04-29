@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brain Scan Tumor Predictor</title>
+    <!-- Load Tailwind CSS for beautiful, responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind to use the Inter font and a sleek color scheme -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#4f46e5', // Indigo-600
+                        'secondary': '#f97316', // Orange-500
+                        'background': '#f3f4f6', // Gray-100
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <!-- Load TensorFlow.js library -->
+    <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.12.0/dist/tf.min.js"></script>
+    <style>
+        /* Custom styles for better aesthetics */
+        body {
+            background-color: #f3f4f6;
+        }
+        #result-container {
+            transition: all 0.3s ease-in-out;
+            transform: translateY(10px);
+            opacity: 0;
+        }
+        .show-result {
+            transform: translateY(0);
+            opacity: 1 !important;
+        }
+        /* Custom image preview styling */
+        #image-preview {
+            max-height: 250px;
+            object-fit: cover;
+            width: 100%;
+            border: 4px solid #e5e7eb;
+        }
+    </style>
+</head>
+<body class="font-sans min-h-screen flex items-center justify-center p-4">
+
+    <!-- Main Application Card -->
+    <div class="w-full max-w-lg bg-white shadow-2xl rounded-xl p-8 space-y-6">
+        <h1 class="text-3xl font-bold text-center text-primary">
+            🧠 Brain Tumor Detector
+        </h1>
+        <p class="text-center text-gray-600">
+            Upload an MRI scan to get an instant prediction.
+        </p>
+
+        <!-- Loading Indicator Area -->
+        <div id="loading-container" class="text-center p-4 rounded-lg bg-indigo-50" style="display: none;">
+            <p class="text-primary font-medium flex items-center justify-center">
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span id="loading-text">Loading Model...</span>
+            </p>
+        </div>
+        
+        <!-- File Input Section -->
+        <div class="flex flex-col items-center">
+            <input type="file" id="image-upload" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+            <label for="image-upload" class="cursor-pointer bg-primary text-white font-semibold py-3 px-6 rounded-full hover:bg-indigo-700 transition duration-300 shadow-md hover:shadow-lg">
+                Upload Brain Scan Image
+            </label>
+        </div>
+
+        <!-- Image Preview and Prediction Button -->
+        <div id="prediction-area" class="space-y-4" style="display: none;">
+            <img id="image-preview" class="rounded-lg shadow-md mx-auto" alt="Preview Image" />
+            <button id="predict-button" onclick="runPrediction()" class="w-full bg-secondary text-white font-bold py-3 rounded-lg hover:bg-orange-600 transition duration-300 shadow-lg" disabled>
+                Analyze Scan
+            </button>
+        </div>
+
+        <!-- Result Display Area -->
+        <div id="result-container" class="p-6 rounded-xl border-l-4 border-primary shadow-inner bg-indigo-50" style="opacity: 0;">
+            <h2 class="text-xl font-semibold text-gray-800 mb-2">Analysis Result:</h2>
+            <div id="prediction-output" class="text-2xl font-extrabold text-primary"></div>
+        </div>
+
+        <!-- Error/Message Display -->
+        <div id="message-area" class="text-red-600 font-medium text-center" style="display: none;"></div>
+
+    </div>
+
+    <script>
+let uploadedImage = null;
+
+function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('image-preview').src = e.target.result;
+            document.getElementById('prediction-area').style.display = 'block';
+            document.getElementById('predict-button').disabled = false;
+        };
+        reader.readAsDataURL(file);
+        uploadedImage = file;
+    }
+}
+
+async function runPrediction() {
+    if (!uploadedImage) return;
+
+    document.getElementById('loading-container').style.display = 'block';
+    document.getElementById('loading-text').innerText = 'Analyzing...';
+    document.getElementById('predict-button').disabled = true;
+
+    const formData = new FormData();
+    formData.append('file', uploadedImage);
+
+    try {
+        const response = await fetch('http://127.0.0.1:5001/predict', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+        document.getElementById('loading-container').style.display = 'none';
+        document.getElementById('result-container').classList.add('show-result');
+
+        if (data.prediction) {
+            document.getElementById('prediction-output').innerText = data.prediction;
+        } else {
+            document.getElementById('prediction-output').innerText = 'Error: ' + data.error;
+        }
+    } catch (error) {
+        document.getElementById('loading-container').style.display = 'none';
+        document.getElementById('prediction-output').innerText = 'Error connecting to server.';
+    }
+}
+</script>
+
+</body>
+</html>
